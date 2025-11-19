@@ -1,0 +1,123 @@
+#!jinja2
+
+[scheduler]
+    UTC mode = True
+    [[events]]
+        abort on stall timeout = True
+        mail events = inactivity, stalled, abort on stall timeout
+        workflow timeout = P1D
+
+[scheduling]
+    initial cycle point = {{START_CYCLE_POINT}}
+    {% if FINAL_CYCLE_POINT | default(False) %}
+        final cycle point = {{FINAL_CYCLE_POINT}}
+    {% endif %}
+
+   [[graph]]
+        PT6H = """
+            get_data => get_gpm => process_analysis => process_periods 
+        """
+        +PT6H/PT6H = """
+            process_periods[-PT6H] => get_data
+        """
+        ##PT24H = """
+      # ##     process_periods => run_series_analysis
+       ## """
+    {% if FINAL_CYCLE_POINT | default(False) %}
+        R1/{{FINAL_CYCLE_POINT}} = """
+            process_periods => run_series_analysis
+        """
+    {% endif %}
+
+[runtime]
+
+    [[root]]
+        script = rose task-run
+        
+        [[[environment]]]
+            SCITOOLS = {{SCITOOLS}}
+            OEMPLOT_CONDA_ENV = {{OEMPLOT_CONDA_ENV}}
+
+
+    [[get_data]]
+        execution time limit = PT1H
+        execution retry delays = 12*PT30M
+
+        [[[environment]]]
+            START_CYCLE_POINT={{START_CYCLE_POINT}}
+            DATADIR={{DATA_DIR}}
+
+        [[[directives]]]
+            -l mem=2gb
+            -q = shared
+    
+    [[get_gpm]]
+        platform = spice
+
+        env-script = """
+        # provide an environment for a cycling suite task
+        eval $(rose task-env)
+        """
+
+        [[[environment]]]
+            ROSE_TASK_APP=get_gpm
+            DATADIR={{DATA_DIR}}
+            GPM_DATA_DIR={{GPM_DATA_DIR}}
+            GPM_OBS_TYPE={{GPM_OBS_TYPE}}
+            OUTPUT_DATA={{PROCESSED_DIR}}
+
+        [[[directives]]]
+            --mem=10G
+            --time=10
+
+
+    [[process_analysis]]
+        platform = spice
+
+        [[[environment]]]
+            OUTPUT_DIR={{PROCESSED_DIR}}
+            DATADIR={{DATA_DIR}}
+
+
+	    [[[directives]]]
+		    --mem = 20G
+		    --time = 90
+
+
+    [[process_periods]]
+        platform = spice
+
+        [[[environment]]]
+            OUTPUT_DIR={{PROCESSED_DIR}}
+            DATADIR={{DATA_DIR}}
+
+
+	    [[[directives]]]
+		    --mem = 20G
+		    --time = 90
+
+    [[run_met]]
+        platform = spice
+
+    [[run_series_analysis]]
+        platform = spice
+        env-script = """
+        # provide an environment for a cycling suite task
+        eval $(rose task-env)
+        """
+        [[[environment]]]
+            START_CYCLE_POINT={{START_CYCLE_POINT}}
+            FINAL_CYCLE_POINT={{FINAL_CYCLE_POINT}}
+            ACCUM_DATA_DIR={{PROCESSED_DIR}}
+            DATADIR={{DATA_DIR}}
+            OUTPUT_BASE={{OUTPUT_BASE}}
+
+        [[[directives]]]
+		--mem = 20G
+		--time = 90
+
+
+
+    [[housekeep]]
+        [[[environment]]]
+            ROSE_TASK_APP=housekeep
