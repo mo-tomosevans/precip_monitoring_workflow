@@ -1,0 +1,125 @@
+# SeriesAnalysis METplus Configuration
+
+# section heading for [config] variables - all items below this line and
+# before the next section heading correspond to the [config] section
+[config]
+
+# List of applications to run - only SeriesAnalysis for this case
+PROCESS_LIST = SeriesAnalysis
+
+# time looping - options are INIT, VALID, RETRO, and REALTIME
+# If set to INIT or RETRO:
+#   INIT_TIME_FMT, INIT_BEG, INIT_END, and INIT_INCREMENT must also be set
+# If set to VALID or REALTIME:
+#   VALID_TIME_FMT, VALID_BEG, VALID_END, and VALID_INCREMENT must also be set
+LOOP_BY = INIT
+
+# Format of INIT_BEG and INT_END using % items
+# %Y = 4 digit year, %m = 2 digit month, %d = 2 digit day, etc.
+# see www.strftime.org for more information
+# %Y%m%d%H expands to YYYYMMDDHH
+INIT_TIME_FMT = %Y%m%dT%H%MZ
+
+# Start time for METplus run - must match INIT_TIME_FMT
+INIT_BEG={ENV[START_CYCLE_POINT]}
+
+# End time for METplus run - must match INIT_TIME_FMT
+INIT_END={ENV[FINAL_CYCLE_POINT]}
+
+SERIES_ANALYSIS_RUNTIME_FREQ = RUN_ONCE
+
+# Increment between METplus runs (in seconds if no units are specified)
+#  Must be >= 60 seconds
+INIT_INCREMENT = 6H 
+
+SERIES_ANALYSIS_BLOCK_SIZE = 5160960
+
+# List of forecast leads to process for each run time (init or valid)
+# In hours if units are not specified
+# If unset, defaults to 0 (don't loop through forecast leads)
+LEAD_SEQ = 6
+
+# list of strings to loop over to run SeriesAnalysis multiple times for a
+# given run time. Each item can be referenced using the filename template
+# syntax {custom?fmt=%s}
+# Not used in this example
+SERIES_ANALYSIS_CUSTOM_LOOP_LIST = 
+
+# Order of loops to process data - Options are times, processes
+# Not relevant if only one item is in the PROCESS_LIST
+# times = run all wrappers in the PROCESS_LIST for a single run time, then
+#   increment the run time and run all wrappers again until all times have
+#   been evaluated.
+# processes = run the first wrapper in the PROCESS_LIST for all times
+#   specified, then repeat for the next item in the PROCESS_LIST until all
+#   wrappers have been run
+LOOP_ORDER = processes
+
+# Verbosity of MET output - overrides LOG_VERBOSITY for SeriesAnalysis only
+LOG_SERIES_ANALYSIS_VERBOSITY = 15
+
+# set to True to add the -paired flag to the SeriesAnalysis command
+SERIES_ANALYSIS_IS_PAIRED = TRUE
+
+# Location of MET config file to pass to SeriesAnalysis
+# References CONFIG_DIR from the [dir] section
+#SERIES_ANALYSIS_CONFIG_FILE = 
+
+# list of statistics to generate with SeriesAnalysis
+SERIES_ANALYSIS_STAT_LIST = TOTAL, RMSE, MAE, ME, ESTDEV, FSTDEV, OSTDEV, ANOM_CORR, BCMSE
+
+# grid to remap data. Value is set as the 'to_grid' variable in the 'regrid' dictionary
+# See MET User's Guide for more information
+
+# Name to identify model (forecast) data in output
+MODEL = MO_GLOBAL
+
+# Name to identify observation data in output
+OBTYPE = UP_ANALYS
+
+# List of variables to compare in SeriesAnalysis - FCST_VAR1 variables correspond
+#  to OBS_VAR1 variables
+# Note [FCST/OBS/BOTH]_SERIES_ANALYSIS_VAR<n>_NAME can be used instead if different evaluations
+# are needed for different tools
+
+#### FIELDS ####
+
+FCST_VAR1_NAME = total_precip_accumulation
+FCST_VAR1_LEVELS = "(*,*)"
+
+OBS_VAR1_NAME = total_precip_accumulation
+OBS_VAR1_LEVELS = "(*,*)"
+
+
+# End of [config] section and start of [dir] section
+[dir]
+
+# location of configuration files used by MET applications
+CONFIG_DIR={PARM_BASE}/met_config
+
+# directory containing forecast input to SeriesAnalysis
+FCST_SERIES_ANALYSIS_INPUT_DIR = {ENV[ACCUM_DATA_DIR]}
+OBS_SERIES_ANALYSIS_INPUT_DIR = {ENV[ACCUM_DATA_DIR]}
+
+OUTPUT_BASE={ENV[OUTPUT_BASE]}
+MET_INSTALL_DIR=/data/users/cfver/METBuild/MET12.1.0
+
+# directory to write output from SeriesAnalysis
+SERIES_ANALYSIS_OUTPUT_DIR = /data/scratch/sebastian.cole/global_precip_stand_alone/
+
+##SERIES_ANALYSIS_REGRID_METHOD = AW_MEAN
+##SERIES_ANALYSIS_REGRID_TO_GRID = 
+
+# End of [dir] section and start of [filename_templates] section
+[filename_templates]
+
+# Template to look for forecast input to SeriesAnalysis relative to FCST_SERIES_ANALYSIS_INPUT_DIR
+# The following template uses begin_end_incr() syntax to generate the following list:
+
+FCST_SERIES_ANALYSIS_INPUT_TEMPLATE ={init?fmt=%Y%m%dT%2H}00Z_6hr_accums.nc
+
+OBS_SERIES_ANALYSIS_INPUT_TEMPLATE = {init?fmt=%Y%m%dT%2H}00Z_VT{valid?fmt=%Y%m%dT%2H}00Z_analysis.nc
+
+
+# Optional subdirectories relative to SERIES_ANALYSIS_OUTPUT_DIR to write output from SeriesAnalysis
+SERIES_ANALYSIS_OUTPUT_TEMPLATE = I{init?fmt=%Y%m%dT%H}_V{valid?fmt=%Y%m%d%H}_L{lead?fmt=%HH}.nc
