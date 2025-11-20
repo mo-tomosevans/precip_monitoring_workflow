@@ -40,7 +40,7 @@
 
 
     [[get_data]]
-        execution time limit = PT1H
+        execution time limit = PT2H
         execution retry delays = 12*PT30M
 
         [[[environment]]]
